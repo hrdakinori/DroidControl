@@ -1,5 +1,7 @@
 package com.hrdapp.android.DroidControl;
 
+import java.lang.ref.WeakReference;
+
 import com.hrdapp.android.DroidControl.R.id;
 
 import android.app.Activity;
@@ -66,13 +68,11 @@ public class DroidControlActivity extends Activity {
         seekBar.setProgress(50);
         seekBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
             // トラッキング開始時に呼び出されます
-            @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
                 Log.v("onStartTrackingTouch()",
                     String.valueOf(seekBar.getProgress()));
             }
             // トラッキング中に呼び出されます
-            @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromTouch) {
                 Log.v("onProgressChanged()",
                     String.valueOf(progress) + ", " + String.valueOf(fromTouch));
@@ -80,7 +80,6 @@ public class DroidControlActivity extends Activity {
                 sendMessage(String.format("s%02d", progress/10));
             }
             // トラッキング終了時に呼び出されます
-            @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 Log.v("onStopTrackingTouch()",
                     String.valueOf(seekBar.getProgress()));
@@ -91,7 +90,7 @@ public class DroidControlActivity extends Activity {
         checkBox1.setChecked(false);
         // チェックボックスがクリックされた時に呼び出されるコールバックリスナーを登録します
         checkBox1.setOnClickListener(new View.OnClickListener() {
-            @Override
+            
             // チェックボックスがクリックされた時に呼び出されます
             public void onClick(View v) {
                 CheckBox checkBox = (CheckBox) v;
@@ -110,7 +109,7 @@ public class DroidControlActivity extends Activity {
         checkBox2.setChecked(false);
         // チェックボックスがクリックされた時に呼び出されるコールバックリスナーを登録します
         checkBox2.setOnClickListener(new View.OnClickListener() {
-            @Override
+            
             // チェックボックスがクリックされた時に呼び出されます
             public void onClick(View v) {
                 CheckBox checkBox = (CheckBox) v;
@@ -215,51 +214,65 @@ public class DroidControlActivity extends Activity {
         }
     }
 
-    // The Handler that gets information back from the BluetoothChatService
-    private final Handler mHandler = new Handler() {
+    static class BtHandler extends Handler {
+        private final WeakReference<DroidControlActivity> mActivity; 
+
+        BtHandler(DroidControlActivity activity) {
+        	mActivity = new WeakReference<DroidControlActivity>(activity);
+        }
         @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-            case MESSAGE_STATE_CHANGE:
-                switch (msg.arg1) {
-                case BluetoothDroidControlService.STATE_CONNECTED:
-                    mTitle.setText(R.string.title_connected_to);
-                    mTitle.append(mConnectedDeviceName);
-                    break;
-                case BluetoothDroidControlService.STATE_CONNECTING:
-                    mTitle.setText(R.string.title_connecting);
-                    break;
-                case BluetoothDroidControlService.STATE_LISTEN:
-                case BluetoothDroidControlService.STATE_NONE:
-                    mTitle.setText(R.string.title_not_connected);
-                    break;
-                }
+        public void handleMessage(Message msg)
+        {
+        	DroidControlActivity activity = mActivity.get();
+             if (activity != null) {
+            	 activity.handleMessage(msg);
+             }
+        }
+    }
+
+    private final Handler mHandler = new BtHandler(this);
+
+    public void handleMessage(Message msg) {
+        switch (msg.what) {
+        case MESSAGE_STATE_CHANGE:
+            switch (msg.arg1) {
+            case BluetoothDroidControlService.STATE_CONNECTED:
+                mTitle.setText(R.string.title_connected_to);
+                mTitle.append(mConnectedDeviceName);
                 break;
-            case MESSAGE_WRITE:
-//                byte[] writeBuf = (byte[]) msg.obj;
-                // construct a string from the buffer
-//                String writeMessage = new String(writeBuf);
-//                mConversationArrayAdapter.add("Me:  " + writeMessage);
+            case BluetoothDroidControlService.STATE_CONNECTING:
+                mTitle.setText(R.string.title_connecting);
                 break;
-            case MESSAGE_READ:
-//                byte[] readBuf = (byte[]) msg.obj;
-                // construct a string from the valid bytes in the buffer
-//                String readMessage = new String(readBuf, 0, msg.arg1);
-//                mConversationArrayAdapter.add(mConnectedDeviceName+":  " + readMessage);
-                break;
-            case MESSAGE_DEVICE_NAME:
-                // save the connected device's name
-                mConnectedDeviceName = msg.getData().getString(DEVICE_NAME);
-                Toast.makeText(getApplicationContext(), "Connected to "
-                               + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
-                break;
-            case MESSAGE_TOAST:
-                Toast.makeText(getApplicationContext(), msg.getData().getString(TOAST),
-                               Toast.LENGTH_SHORT).show();
+            case BluetoothDroidControlService.STATE_LISTEN:
+            case BluetoothDroidControlService.STATE_NONE:
+                mTitle.setText(R.string.title_not_connected);
                 break;
             }
+            break;
+        case MESSAGE_WRITE:
+//            byte[] writeBuf = (byte[]) msg.obj;
+            // construct a string from the buffer
+//            String writeMessage = new String(writeBuf);
+//            mConversationArrayAdapter.add("Me:  " + writeMessage);
+            break;
+        case MESSAGE_READ:
+//            byte[] readBuf = (byte[]) msg.obj;
+            // construct a string from the valid bytes in the buffer
+//            String readMessage = new String(readBuf, 0, msg.arg1);
+//            mConversationArrayAdapter.add(mConnectedDeviceName+":  " + readMessage);
+            break;
+        case MESSAGE_DEVICE_NAME:
+            // save the connected device's name
+            mConnectedDeviceName = msg.getData().getString(DEVICE_NAME);
+            Toast.makeText(getApplicationContext(), "Connected to "
+                           + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
+            break;
+        case MESSAGE_TOAST:
+            Toast.makeText(getApplicationContext(), msg.getData().getString(TOAST),
+                           Toast.LENGTH_SHORT).show();
+            break;
         }
-    };
+    }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
